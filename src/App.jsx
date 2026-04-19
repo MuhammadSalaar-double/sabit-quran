@@ -82,18 +82,26 @@ function App() {
         }
 
         setAyah({
-          arabicText: verse.text_uthmani || verse.text_imlaei || "No Arabic text",
-          translation:
-            verse.translations?.[0]?.text
-              ? cleanTranslation(verse.translations[0].text)
-              : "Translation not available",
-          surahName:
-            verse.surah?.name_simple || `Surah ${verse.chapter_id}`,
-          ayahNumber:
-            verse.verse_number ||
-            verse.verse_key?.split(":")[1] ||
-            "?",
-        });
+  arabicText:
+    verse.text_uthmani ||
+    verse.text_imlaei ||
+    verse.text_indopak ||
+    "No Arabic text",
+
+  translation: cleanTranslation(
+    verse.translations?.[0]?.text || "Translation not available"
+  ),
+
+  surahName:
+    verse.chapter?.name_simple ||
+    verse.surah?.name_simple ||
+    `Surah ${verse.chapter_id || "?"}`,
+
+  ayahNumber:
+    verse.verse_number ||
+    verse.verse_key?.split(":")[1] ||
+    "?",
+});
       } catch (err) {
         setAyah(null);
         setError(err.message || "Failed to load ayah");
