@@ -78,18 +78,25 @@ function App() {
         const verse = data?.verse;
 
         if (!verse) {
-          throw new Error("Failed to load ayah");
+          throw new Error("No ayah data received");
         }
 
         setAyah({
-          arabicText: verse.text_uthmani || "",
-          translation: cleanTranslation(verse.translations?.[0]?.text || ""),
-          surahName: verse.surah?.name_simple || "",
-          ayahNumber: verse.verse_number || "",
+          arabicText: verse.text_uthmani || verse.text_imlaei || "No Arabic text",
+          translation:
+            verse.translations?.[0]?.text
+              ? cleanTranslation(verse.translations[0].text)
+              : "Translation not available",
+          surahName:
+            verse.surah?.name_simple || `Surah ${verse.chapter_id}`,
+          ayahNumber:
+            verse.verse_number ||
+            verse.verse_key?.split(":")[1] ||
+            "?",
         });
-      } catch {
+      } catch (err) {
         setAyah(null);
-        setError("Failed to load ayah");
+        setError(err.message || "Failed to load ayah");
       } finally {
         setIsLoading(false);
       }
@@ -113,11 +120,8 @@ function App() {
     );
   }
 
-  // Reading today adds one day only once, and missed days never reset progress.
   function markAsReadToday() {
-    if (hasReadToday) {
-      return;
-    }
+    if (hasReadToday) return;
 
     const nextStreak = streak + 1;
     setStreak(nextStreak);
@@ -128,77 +132,42 @@ function App() {
   const statusText = hasReadToday
     ? "Today's ayah is already counted. Your streak is safe."
     : hasMissedDay
-      ? "You missed a day, but your progress is still with you."
-      : "One ayah today is enough to keep the habit alive.";
+    ? "You missed a day, but your progress is still with you."
+    : "One ayah today is enough to keep the habit alive.";
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#ffffff,_#f7f4ee_45%,_#ede7dc)] px-4 py-10 text-ink">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-xl items-center justify-center">
-        <section className="w-full rounded-2xl border border-white/80 bg-white/90 p-8 shadow-calm backdrop-blur sm:p-10">
-          <div className="space-y-8">
-            <header className="space-y-2 text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-olive">
-                Quran Habit Tracker
-              </p>
-              <h1 className="text-3xl font-semibold text-slate-900">SABIT</h1>
-              <p className="text-base text-slate-500">Stay connected daily</p>
-              <p className="text-sm text-slate-500">{statusText}</p>
-            </header>
+    <main className="min-h-screen px-4 py-10 text-center">
+      <h1 className="text-3xl font-bold">SABIT</h1>
+      <p className="text-gray-500">Stay connected daily</p>
+      <p className="text-sm mt-2">{statusText}</p>
 
-            <div className="rounded-2xl bg-sand px-5 py-7 text-center">
-              {isLoading ? (
-                <div className="space-y-3">
-                  <div className="mx-auto h-2 w-24 rounded-full bg-stone-200" />
-                  <p className="text-sm text-slate-500">Loading your ayah...</p>
-                </div>
-              ) : error ? (
-                <p className="text-lg font-medium text-slate-700">{error}</p>
-              ) : (
-                <div className="space-y-5">
-                  <p className="arabic-ayah text-3xl leading-loose text-slate-900 sm:text-4xl">
-                    {ayah?.arabicText}
-                  </p>
-                  <p className="text-sm leading-7 text-slate-600 sm:text-base">
-                    {ayah?.translation}
-                  </p>
-                  <p className="text-sm font-medium text-olive">
-                    {ayah?.surahName} • Ayah {ayah?.ayahNumber}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-2xl border border-stone-200 px-5 py-4 text-center">
-              <p className="text-xl font-semibold text-slate-900">
-                🔥 Streak: {streak} days
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={markAsReadToday}
-              disabled={hasReadToday}
-              className="w-full rounded-2xl bg-slate-900 px-5 py-4 text-base font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              {hasReadToday ? "Already Marked Today" : "I Read Today ✅"}
-            </button>
-
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-5 py-5 text-center">
-              <p className="text-sm font-medium text-emerald-900">
-                Missed yesterday? You paused — not broken.
-              </p>
-              <button
-                type="button"
-                onClick={markAsReadToday}
-                disabled={hasReadToday}
-                className="mt-4 w-full rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Continue with 1 Ayah (10 sec)
-              </button>
-            </div>
-          </div>
-        </section>
+      <div className="mt-6 p-6 border rounded-xl">
+        {isLoading ? (
+          <p>Loading your ayah...</p>
+        ) : error ? (
+          <p>{error}</p>
+        ) : (
+          <>
+            <p className="text-2xl">{ayah?.arabicText}</p>
+            <p className="mt-3">{ayah?.translation}</p>
+            <p className="mt-2 text-sm text-gray-500">
+              {ayah?.surahName} • Ayah {ayah?.ayahNumber}
+            </p>
+          </>
+        )}
       </div>
+
+      <div className="mt-6">
+        <p>🔥 Streak: {streak} days</p>
+      </div>
+
+      <button
+        onClick={markAsReadToday}
+        disabled={hasReadToday}
+        className="mt-4 px-6 py-3 bg-black text-white rounded-xl disabled:bg-gray-400"
+      >
+        {hasReadToday ? "Already Marked Today" : "I Read Today ✅"}
+      </button>
     </main>
   );
 }
