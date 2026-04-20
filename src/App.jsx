@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "sabit-tracker";
 
-// ✅ FIXED API URL (includes required fields)
+// ✅ FIXED API URL
 const RANDOM_AYAH_URL =
   "https://api.quran.com/api/v4/verses/random?translations=131&fields=text_uthmani,chapter_id,verse_key";
 
@@ -13,26 +13,28 @@ function getTodayKey() {
   const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
+
+  // ✅ NO TEMPLATE STRING (fixes Vercel error)
   return year + "-" + month + "-" + day;
 }
 
 function parseDateKey(dateKey) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const parts = dateKey.split("-");
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
 }
 
 function getDaysBetween(startDateKey, endDateKey) {
-  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  const msPerDay = 1000 * 60 * 60 * 24;
   const start = parseDateKey(startDateKey);
   const end = parseDateKey(endDateKey);
-  return Math.round((end - start) / millisecondsPerDay);
+  return Math.round((end - start) / msPerDay);
 }
 
 function cleanTranslation(text = "") {
   const withoutFootnotes = text.replace(/<sup[^>]*>.*?<\/sup>/gi, "");
   const container = document.createElement("div");
   container.innerHTML = withoutFootnotes;
-  return container.textContent?.trim() || "";
+  return container.textContent ? container.textContent.trim() : "";
 }
 
 function getStoredProgress() {
@@ -53,7 +55,7 @@ function getStoredProgress() {
   }
 }
 
-// ===== Main App =====
+// ===== App =====
 function App() {
   const [ayah, setAyah] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,16 +63,16 @@ function App() {
   const [streak, setStreak] = useState(0);
   const [lastReadDate, setLastReadDate] = useState("");
 
-  // Load saved progress
+  // Load streak
   useEffect(() => {
-    const savedProgress = getStoredProgress();
-    setStreak(savedProgress.streak);
-    setLastReadDate(savedProgress.lastReadDate);
+    const saved = getStoredProgress();
+    setStreak(saved.streak);
+    setLastReadDate(saved.lastReadDate);
   }, []);
 
   // Fetch ayah
   useEffect(() => {
-    async function fetchRandomAyah() {
+    async function fetchAyah() {
       try {
         setIsLoading(true);
         setError("");
@@ -78,48 +80,49 @@ function App() {
         const response = await fetch(RANDOM_AYAH_URL);
 
         if (!response.ok) {
-          throw new Error("Failed to load ayah");
+          throw new Error("Failed to fetch ayah");
         }
 
         const data = await response.json();
-        const verse = data?.verse;
+        const verse = data && data.verse ? data.verse : null;
 
         if (!verse) {
           throw new Error("No ayah data received");
         }
 
-        // ✅ FIXED parsing
         setAyah({
-          arabicText: verse?.text_uthmani || "No Arabic text",
+          arabicText: verse.text_uthmani || "No Arabic text",
 
           translation: cleanTranslation(
-            verse?.translations?.[0]?.text || "Translation not available"
+            verse.translations && verse.translations[0]
+              ? verse.translations[0].text
+              : "Translation not available"
           ),
 
           surahName:
-            verse?.chapter?.name_simple ||
-            `Surah ${verse?.chapter_id || "?"}`,
+            verse.chapter && verse.chapter.name_simple
+              ? verse.chapter.name_simple
+              : "Unknown Surah",
 
           ayahNumber:
-            verse?.verse_number ||
-            verse?.verse_key?.split(":")[1] ||
-            "?",
+            verse.verse_number ||
+            (verse.verse_key ? verse.verse_key.split(":")[1] : "?"),
         });
       } catch (err) {
         setAyah(null);
-        setError(err.message || "Failed to load ayah");
+        setError(err.message || "Error loading ayah");
       } finally {
         setIsLoading(false);
       }
     }
 
-    fetchRandomAyah();
+    fetchAyah();
   }, []);
 
   const todayKey = getTodayKey();
   const hasReadToday = lastReadDate === todayKey;
   const hasMissedDay =
-    Boolean(lastReadDate) && getDaysBetween(lastReadDate, todayKey) > 1;
+    lastReadDate && getDaysBetween(lastReadDate, todayKey) > 1;
 
   function saveProgress(nextStreak, nextDate) {
     localStorage.setItem(
@@ -134,10 +137,10 @@ function App() {
   function markAsReadToday() {
     if (hasReadToday) return;
 
-    const nextStreak = streak + 1;
-    setStreak(nextStreak);
+    const next = streak + 1;
+    setStreak(next);
     setLastReadDate(todayKey);
-    saveProgress(nextStreak, todayKey);
+    saveProgress(next, todayKey);
   }
 
   const statusText = hasReadToday
@@ -159,10 +162,10 @@ function App() {
           <p>{error}</p>
         ) : (
           <>
-            <p className="text-2xl">{ayah?.arabicText}</p>
-            <p className="mt-3">{ayah?.translation}</p>
+            <p className="text-2xl">{ayah && ayah.arabicText}</p>
+            <p className="mt-3">{ayah && ayah.translation}</p>
             <p className="mt-2 text-sm text-gray-500">
-              {ayah?.surahName} • Ayah {ayah?.ayahNumber}
+              {ayah && ayah.surahName} • Ayah {ayah && ayah.ayahNumber}
             </p>
           </>
         )}
