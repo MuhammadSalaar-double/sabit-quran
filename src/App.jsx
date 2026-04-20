@@ -1,9 +1,13 @@
+```jsx
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "sabit-tracker";
-const RANDOM_AYAH_URL =
-  "https://api.quran.com/api/v4/verses/random?translations=131";
 
+// ✅ FIXED API URL (includes required fields)
+const RANDOM_AYAH_URL =
+  "https://api.quran.com/api/v4/verses/random?translations=131&fields=text_uthmani,chapter_id,verse_key";
+
+// ===== Helpers =====
 function getTodayKey() {
   const today = new Date();
   const year = today.getFullYear();
@@ -49,6 +53,7 @@ function getStoredProgress() {
   }
 }
 
+// ===== Main App =====
 function App() {
   const [ayah, setAyah] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,12 +61,14 @@ function App() {
   const [streak, setStreak] = useState(0);
   const [lastReadDate, setLastReadDate] = useState("");
 
+  // Load saved progress
   useEffect(() => {
     const savedProgress = getStoredProgress();
     setStreak(savedProgress.streak);
     setLastReadDate(savedProgress.lastReadDate);
   }, []);
 
+  // Fetch ayah
   useEffect(() => {
     async function fetchRandomAyah() {
       try {
@@ -81,27 +88,23 @@ function App() {
           throw new Error("No ayah data received");
         }
 
+        // ✅ FIXED parsing
         setAyah({
-  arabicText:
-    verse.text_uthmani ||
-    verse.text_imlaei ||
-    verse.text_indopak ||
-    "No Arabic text",
+          arabicText: verse?.text_uthmani || "No Arabic text",
 
-  translation: cleanTranslation(
-    verse.translations?.[0]?.text || "Translation not available"
-  ),
+          translation: cleanTranslation(
+            verse?.translations?.[0]?.text || "Translation not available"
+          ),
 
-  surahName:
-    verse.chapter?.name_simple ||
-    verse.surah?.name_simple ||
-    `Surah ${verse.chapter_id || "?"}`,
+          surahName:
+            verse?.chapter?.name_simple ||
+            `Surah ${verse?.chapter_id || "?"}`,
 
-  ayahNumber:
-    verse.verse_number ||
-    verse.verse_key?.split(":")[1] ||
-    "?",
-});
+          ayahNumber:
+            verse?.verse_number ||
+            verse?.verse_key?.split(":")[1] ||
+            "?",
+        });
       } catch (err) {
         setAyah(null);
         setError(err.message || "Failed to load ayah");
@@ -181,3 +184,4 @@ function App() {
 }
 
 export default App;
+```
